@@ -111,25 +111,26 @@ class Intervalo(object):
         """
         if (self.lo >= 0.0 and otro.lo >= 0.0):
             return Intervalo( self.lo*otro.lo, self.hi*otro.hi )
-        if (self.hi < 0.0 and otro.hi < 0.0):
+        elif (self.hi < 0.0 and otro.hi < 0.0):
             return Intervalo( self.hi*otro.hi, self.lo*otro.lo )
-        if (self.lo >= 0.0 and otro.hi < 0.0):
+        elif (self.lo >= 0.0 and otro.hi < 0.0):
             return Intervalo( self.lo*otro.hi, self.hi*otro.lo )
-        if (self.hi < 0.0 and otro.lo >= 0.0):
+        elif (self.hi < 0.0 and otro.lo >= 0.0):
             return Intervalo( self.hi*otro.lo, self.lo*otro.hi )
-        if (self.lo >= 0.0 and otro.lo*otro.hi < 0.0):
+        elif (self.lo >= 0.0 and otro.lo*otro.hi < 0.0):
             return Intervalo( self.hi*otro.lo, self.hi*otro.hi )
-        if (self.hi < 0.0 and otro.lo*otro.hi < 0.0):
+        elif (self.hi < 0.0 and otro.lo*otro.hi < 0.0):
             return Intervalo( self.lo*otro.hi, self.lo*otro.lo )
-        if (otro.lo >= 0.0 and self.lo*self.hi < 0.0):
+        elif (otro.lo >= 0.0 and self.lo*self.hi < 0.0):
             return Intervalo( self.lo*otro.hi, self.hi*otro.hi )
-        if (otro.hi < 0.0 and self.lo*self.hi < 0.0):
+        elif (otro.hi < 0.0 and self.lo*self.hi < 0.0):
             return Intervalo( self.hi*otro.lo, self.lo*otro.lo )
-        #else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
+            
+        else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
 
-        S1 = [ self.lo*otro.lo, self.hi*otro.hi ]
-        S2 = [ self.hi*otro.lo, self.lo*otro.hi ]
-        return Intervalo( min(S2), max(S1) )
+            S1 = [ self.lo*otro.lo, self.hi*otro.hi ]
+            S2 = [ self.hi*otro.lo, self.lo*otro.hi ]
+            return Intervalo( min(S2), max(S1) )
 
     def __div__(self, otro):
         """

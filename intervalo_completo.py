@@ -75,7 +75,7 @@ class Intervalo(object):
         return Intervalo( self.lo - otro.hi, self.hi - otro.lo )
         
     def __rsub__(self, otro):
-        return -self + otro
+        return -(self - otro)
 
 
     def __pos__(self):
@@ -93,7 +93,6 @@ class Intervalo(object):
         """
 
         otro = Intervalo(otro)
-
         return self.mult2(otro)
         
     def __rmul__(self, otro):
@@ -109,6 +108,7 @@ class Intervalo(object):
     def mult2(self,otro):
         """
         Algor\'itmo de la multiplicaci\'on que distingue los nueve casos posibles
+        HAY UN ERROR AQUI!
         """
         if (self.lo >= 0.0 and otro.lo >= 0.0):
             return Intervalo( self.lo*otro.lo, self.hi*otro.hi )
@@ -144,7 +144,7 @@ class Intervalo(object):
 
     def __rdiv__(self, otro):
         # Esto se encarga de cosas tipo numero/intervalo; self es el intervalo
-        return otro / self
+        return (self / otro).reciprocal()
 
     def reciprocal(self):
         """

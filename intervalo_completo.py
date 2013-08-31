@@ -108,7 +108,6 @@ class Intervalo(object):
     def mult2(self,otro):
         """
         Algor\'itmo de la multiplicaci\'on que distingue los nueve casos posibles
-        HAY UN ERROR AQUI!
         """
         if (self.lo >= 0.0 and otro.lo >= 0.0):
             return Intervalo( self.lo*otro.lo, self.hi*otro.hi )
@@ -128,8 +127,8 @@ class Intervalo(object):
             return Intervalo( self.hi*otro.lo, self.lo*otro.lo )
         #else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
 
-        S1 = [ self.lo * otro.lo, self.hi * otro.hi ]
-        S2 = [ self.hi * otro.lo, self.lo * otro.hi ]
+        S1 = [ self.lo*otro.lo, self.hi*otro.hi ]
+        S2 = [ self.hi*otro.lo, self.lo*otro.hi ]
         return Intervalo( min(S2), max(S1) )
 
     def __div__(self, otro):
@@ -139,12 +138,28 @@ class Intervalo(object):
         otro = Intervalo(otro)
         try:
             return self * otro.reciprocal()
-        except:
-            raise ZeroDivisionError("Interval dividing by contains 0.")
+        except ZeroDivisionError:
+            print "To divide by an interval containining 0, we need to implement extended intervals!"
+            # put extended interval code here
 
     def __rdiv__(self, otro):
         # Esto se encarga de cosas tipo numero/intervalo; self es el intervalo
         return (self / otro).reciprocal()
+
+
+    def __contains__(self, x):
+        """
+        Esto verifica si el intervalo contiene (o no) un n\'umero real
+        """
+        return self.lo <= x <= self.hi
+
+    def __abs__(self):  # use as abs(i)
+        return max( abs(self.lo), abs(self.hi) )
+
+
+    def abs(self):     # use as i.abs()
+        return abs(self)
+
 
     def reciprocal(self):
         """
@@ -155,15 +170,9 @@ class Intervalo(object):
 
         return Intervalo( 1.0/self.hi, 1.0/self.lo )
 
-    def __contains__(self, x):
-        """
-        Esto verifica si el intervalo contiene (o no) un n\'umero real
-        """
-        return self.lo <= x <= self.hi
+    
+        # pow, rpow, abs, sin, cos, ...
 
-    # pow, rpow, abs, sin, cos, ...
-    def abs(self):
-        raise NotImplementedError('self.abs() is not yet implemented for Intervalo')
 
     def exp(self):
         """Exponencial de un intervalo: 'self.exp()'"""
@@ -346,3 +355,6 @@ def make_mpf(a):
 		return a
 
 	return mpf(str(a))
+
+def exp(a):
+    return a.exp()

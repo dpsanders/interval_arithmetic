@@ -33,7 +33,7 @@ class Intervalo(object):
         elif (b < a):  # limits wrong way round; not right approach for extended IA
             a, b = b, a
 
-        print(a, type(a), b, type(b))
+        # print(a, type(a), b, type(b))
 
         a = make_mpf(a)
         b = make_mpf(b)
@@ -60,9 +60,6 @@ class Intervalo(object):
         """
 
         otro = Intervalo(otro)
-
-        print otro
-
         return Intervalo(self.lo + otro.lo, self.hi + otro.hi)
         
     def __radd__(self, otro):
@@ -75,7 +72,6 @@ class Intervalo(object):
         """
 
         otro = Intervalo(otro)
-
         return Intervalo( self.lo - otro.hi, self.hi - otro.lo )
         
     def __rsub__(self, otro):
@@ -95,13 +91,14 @@ class Intervalo(object):
         """
         Se implementa la multiplicaci\'on usando `multFast`
         """
-        try:
-            return self.mult2(otro)
-        except:
-            return self.mult2(Intervalo(otro))
 
+        otro = Intervalo(otro)
+
+        return self.mult2(otro)
+        
     def __rmul__(self, otro):
         return self * otro
+
 
     def mult1(self,otro):
         """ Algor\'itmo de la multiplicaci\'on ingenuo """
@@ -114,33 +111,32 @@ class Intervalo(object):
         Algor\'itmo de la multiplicaci\'on que distingue los nueve casos posibles
         """
         if (self.lo >= 0.0 and otro.lo >= 0.0):
-            answ = Intervalo( self.lo*otro.lo, self.hi*otro.hi )
-        elif (self.hi < 0.0 and otro.hi < 0.0):
-            answ = Intervalo( self.hi*otro.hi, self.lo*otro.lo )
-        elif (self.lo >= 0.0 and otro.hi < 0.0):
-            answ = Intervalo( self.lo*otro.hi, self.hi*otro.lo )
-        elif (self.hi < 0.0 and otro.lo >= 0.0):
-            answ = Intervalo( self.hi*otro.lo, self.lo*otro.hi )
-        elif (self.lo >= 0.0 and otro.lo*otro.hi < 0.0):
-            answ = Intervalo( self.hi*otro.lo, self.hi*otro.hi )
-        elif (self.hi < 0.0 and otro.lo*otro.hi < 0.0):
-            answ = Intervalo( self.lo*otro.hi, self.lo*otro.lo )
-        elif (otro.lo >= 0.0 and self.lo*self.hi < 0.0):
-            answ = Intervalo( self.lo*otro.hi, self.hi*otro.hi )
-        elif (otro.hi < 0.0 and self.lo*self.hi < 0.0):
-            answ = Intervalo( self.hi*otro.lo, self.lo*otro.lo )
-        else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
-            S1 = [ self.lo * otro.lo, self.hi * otro.hi ]
-            S2 = [ self.hi * otro.lo, self.lo * otro.hi ]
-            answ = Intervalo( min(S2), max(S1) )
-        return answ
+            return Intervalo( self.lo*otro.lo, self.hi*otro.hi )
+        if (self.hi < 0.0 and otro.hi < 0.0):
+            return Intervalo( self.hi*otro.hi, self.lo*otro.lo )
+        if (self.lo >= 0.0 and otro.hi < 0.0):
+            return Intervalo( self.lo*otro.hi, self.hi*otro.lo )
+        if (self.hi < 0.0 and otro.lo >= 0.0):
+            return Intervalo( self.hi*otro.lo, self.lo*otro.hi )
+        if (self.lo >= 0.0 and otro.lo*otro.hi < 0.0):
+            return Intervalo( self.hi*otro.lo, self.hi*otro.hi )
+        if (self.hi < 0.0 and otro.lo*otro.hi < 0.0):
+            return Intervalo( self.lo*otro.hi, self.lo*otro.lo )
+        if (otro.lo >= 0.0 and self.lo*self.hi < 0.0):
+            return Intervalo( self.lo*otro.hi, self.hi*otro.hi )
+        if (otro.hi < 0.0 and self.lo*self.hi < 0.0):
+            return Intervalo( self.hi*otro.lo, self.lo*otro.lo )
+        #else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
+
+        S1 = [ self.lo * otro.lo, self.hi * otro.hi ]
+        S2 = [ self.hi * otro.lo, self.lo * otro.hi ]
+        return Intervalo( min(S2), max(S1) )
 
     def __div__(self, otro):
         """
         Divisi\'on de intervalos: producto del primero por el rec\'iproco del segundo
         """
-        if not isinstance(otro,Intervalo):
-            otro = Intervalo(otro)
+        otro = Intervalo(otro)
         try:
             return self * otro.reciprocal()
         except:
@@ -148,7 +144,7 @@ class Intervalo(object):
 
     def __rdiv__(self, otro):
         # Esto se encarga de cosas tipo numero/intervalo; self es el intervalo
-        return Intervalo(otro) * self.reciprocal()
+        return otro / self
 
     def reciprocal(self):
         """
@@ -156,6 +152,7 @@ class Intervalo(object):
         """
         if 0 in self:
             raise ZeroDivisionError("Interval {} in denominator contains 0.".format(self))
+
         return Intervalo( 1.0/self.hi, 1.0/self.lo )
 
     def __contains__(self, x):

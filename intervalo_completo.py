@@ -87,6 +87,7 @@ class Intervalo(object):
         """
         return Intervalo(-self.hi,-self.lo)
     
+
     def __mul__(self, otro):
         """
         Se implementa la multiplicaci\'on usando `multFast`
@@ -132,6 +133,7 @@ class Intervalo(object):
             S2 = [ self.hi*otro.lo, self.lo*otro.hi ]
             return Intervalo( min(S2), max(S1) )
 
+
     def __div__(self, otro):
         """
         Divisi\'on de intervalos: producto del primero por el rec\'iproco del segundo
@@ -142,6 +144,7 @@ class Intervalo(object):
         except ZeroDivisionError:
             print "To divide by an interval containining 0, we need to implement extended intervals!"
             # put extended interval code here
+            pass
 
     def __rdiv__(self, otro):
         # Esto se encarga de cosas tipo numero/intervalo; self es el intervalo
@@ -153,6 +156,7 @@ class Intervalo(object):
         Esto verifica si el intervalo contiene (o no) un n\'umero real
         """
         return self.lo <= x <= self.hi
+
 
     def __abs__(self):  # use as abs(i)
         return max( abs(self.lo), abs(self.hi) )
@@ -181,14 +185,40 @@ class Intervalo(object):
 
     def log(self):
         """Logaritmo de un intervalo: 'self.log()'"""
+        if 0 > self.lo:
+            raise ValueError('Error: Interval {} contains 0.".format(self)')
+        
         return Intervalo( mp.log(self.lo), mp.log(self.hi))
+
 
     def __pow__(self, exponent):
         """
         Se calcula la potencia de un intervalo; operador '**'
-        NOT YET IMPLEMENTED
+        NEEDS TESTING
         """
-        raise NotImplementedError('self**exponent is not yet implemented for Intervalo')
+        if isinstance(exponent,Intervalo):
+            # exponent is an interval
+            return ( exponent*self.log() ).exp()
+        else:
+            # exponent is float, int, mpf, ...
+            if exponent >= 0:
+                if 0 in self:
+                    try:
+                        return Intervalo( 0, max( self.lo**exponent, self.hi**exponent ) )
+                    except:
+                        raise ValueError('Negative number cannot be raised to a fractional power')
+                else:
+                    return Intervalo( self.lo**exponent, self.hi**exponent )
+            elif exponent < 0:
+                try:
+                    return self.reciprocal()**(-exponent)
+                except:
+                    raise ZeroDivisionError("Interval contains 0.")
+
+
+    def __rpow__(self,exponent):
+        return Intervalo(exponent)**self
+
 
     def sin(self):
         """
@@ -204,23 +234,6 @@ class Intervalo(object):
         """
         raise NotImplementedError('self.cos() is not yet implemented for Intervalo')
 
-
-    #    # TESTING
-    #    #if 0 in self and exponent < 0:
-    #    #    raise ZeroDivisionError("Interval {} in denominator contains 0.".format(self))
-    #    #
-    #    #if exponent > 0:
-    #    #
-    #    #    if self.lo<0:
-    #    #        raise ValueError("Negative number cannot be raised to a fractional power")
-    #    #    else:
-    #    #        return Intervalo(self.lo**exponent, self.hi**exponent)
-    #    #else:
-    #    #    try:
-    #    #        return (self.reciprocal())**(-exponent)
-    #    #    except:
-    #    #        raise ZeroDivisionError(0.0 cannot be raised to a negative power)
-    #    return Intervalo( self.lo**exponent, self.hi**exponent )
 
     # Las relaciones que sirven para checar el orden parcial
     def __eq__(self, otro):

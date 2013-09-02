@@ -23,9 +23,7 @@ class Intervalo(object):
         """
 
         
-        if isinstance(a, Intervalo):  # "copy constructor"
-        	self.lo, self.hi = a.lo, a.hi
-        	return
+       
 
         if b is None:  # single argument, so make thin interval
             b = a
@@ -59,7 +57,7 @@ class Intervalo(object):
         Suma de intervalos
         """
 
-        otro = Intervalo(otro)
+        otro = self.make_interval(otro)
         return Intervalo(self.lo + otro.lo, self.hi + otro.hi)
         
     def __radd__(self, otro):
@@ -71,7 +69,7 @@ class Intervalo(object):
         Resta de intervalos
         """
 
-        otro = Intervalo(otro)
+        otro = self.make_interval(otro)
         return Intervalo( self.lo - otro.hi, self.hi - otro.lo )
         
     def __rsub__(self, otro):
@@ -93,7 +91,7 @@ class Intervalo(object):
         Se implementa la multiplicaci\'on usando `multFast`
         """
 
-        otro = Intervalo(otro)
+        otro = self.make_interval(otro)
         return self.mult2(otro)
         
     def __rmul__(self, otro):
@@ -138,7 +136,8 @@ class Intervalo(object):
         """
         Divisi\'on de intervalos: producto del primero por el rec\'iproco del segundo
         """
-        otro = Intervalo(otro)
+        otro = self.make_interval(otro)
+
         try:
             return self * otro.reciprocal()
         except ZeroDivisionError:
@@ -361,6 +360,13 @@ class Intervalo(object):
 
     def _repr_latex_(self):
         return "$[{}, {}]$".format(self.lo, self.hi)
+
+
+    def make_interval(self, a):
+        if isinstance(a, Intervalo):
+            return a
+
+        return Intervalo(a)
 
 
 def make_mpf(a):

@@ -125,7 +125,7 @@ class Intervalo(object):
             return Intervalo( self.lo*otro.hi, self.hi*otro.hi )
         elif (otro.hi < 0.0 and self.lo*self.hi < 0.0):
             return Intervalo( self.hi*otro.lo, self.lo*otro.lo )
-            
+
         else: #(self.lo*self.hi < 0.0 and otro.lo*otro.hi < 0.0):
 
             S1 = [ self.lo*otro.lo, self.hi*otro.hi ]
@@ -359,3 +359,18 @@ def make_mpf(a):
 
 def exp(a):
     return a.exp()
+
+
+
+# Correct (directed) rounding:
+# in each calculation of the lower bound, "floor" rounding must be used;
+# for the upper bound, "ceiling" rounding
+
+# In mpmath, use keyword arguments  rounding="f"  or  rounding="c", respectively
+
+# E.g. to construct the thin interval 0.1, we use:
+# mp.pretty = False
+# a = mpf("0.1", rounding="f")
+# b = mpf("0.1", rounding="c")
+# i = Intervalo(a, b)
+# i.lo, i.hi

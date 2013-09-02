@@ -351,12 +351,13 @@ class Intervalo(object):
         else:
             return min( abs(self.lo), abs(self.hi) )
 
+
     # Representaciones especiales para el IPython Notebook:
     def _repr_html_(self):
         #return "[{}, {}]".format(self.lo, self.hi)
-        representation = "[{}, {}]".format(self.lo, self.hi)
-        representation = representation.replace("inf", r"&infin;")
-        return representation
+        reprn = "[{}, {}]".format(self.lo, self.hi)
+        reprn = reprn.replace("inf", r"&infin;")
+        return reprn
 
     def _repr_latex_(self):
         return "$[{}, {}]$".format(self.lo, self.hi)
@@ -375,6 +376,7 @@ def make_mpf(a):
 		return a
 
 	return mpf(str(a))
+
 
 def exp(a):
     return a.exp()

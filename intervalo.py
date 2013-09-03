@@ -1,6 +1,5 @@
 # Usamos mpmath para las funciones elementales (exp, log, sin, cos, tan, etc)
 # para adem\'as poder usar precisi\'on extendida
-# NOTA
 
 from sympy.mpmath import mp, mpf
 
@@ -22,9 +21,6 @@ class Intervalo(object):
         Se incluyen otras funciones (sin, cos, exp, log) que ser\'an \'utiles.
         """
 
-        
-       
-
         if b is None:  # single argument, so make thin interval
             b = a
 
@@ -37,8 +33,6 @@ class Intervalo(object):
         b = make_mpf(b)
 
         self.lo, self.hi = a, b
-        
-        # self.lo, self.hi = lo, hi
             
 
     # Lo siguiente sirve para dar informaci\'on bonita del objeto `Intervalo`
@@ -143,7 +137,6 @@ class Intervalo(object):
         except ZeroDivisionError:
             print "To divide by an interval containining 0, we need to implement extended intervals!"
             # put extended interval code here
-            pass
 
     def __rdiv__(self, otro):
         # Esto se encarga de cosas tipo numero/intervalo; self es el intervalo
@@ -170,49 +163,99 @@ class Intervalo(object):
         Esto define el rec\'iproco de un intervalo
         """
         if 0 in self:
-            raise ZeroDivisionError("Interval {} in denominator contains 0.".format(self))
+            txt_error = "Interval {} in denominator contains 0.".format(self)
+            raise ZeroDivisionError( txt_error )
 
         return Intervalo( 1.0/self.hi, 1.0/self.lo )
 
     
-        # pow, rpow, abs, sin, cos, ...
-
+    # pow, rpow, abs, sin, cos, ...
 
     def exp(self):
-        """Exponencial de un intervalo: 'self.exp()'"""
+        """
+        Exponencial de un intervalo: 'self.exp()'
+        """
         return Intervalo( mp.exp(self.lo), mp.exp(self.hi))
 
     def log(self):
-        """Logaritmo de un intervalo: 'self.log()'"""
-        if 0 > self.lo:
-            raise ValueError('Error: Interval {} contains 0.".format(self)')
-        
-        return Intervalo( mp.log(self.lo), mp.log(self.hi))
+        """
+        Logaritmo de un intervalo: 'self.log()'
+
+        NOTA: Si el intervalo contiene al 0, pero no es estrictamente negativo,
+        se calcula el logaritmo de la intersecci\'on  del intervalo con el dominio
+        natural del logaritmo, i.e., [0,+inf].
+        """
+        if 0 in self:
+            domainNatural = Intervalo( 0,mpf('inf') )
+            intervalRestricted = self.intersection( domainNatural )
+            txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
+            print txt_warning
+            txt_warning = "The interval shall be restricted to its intersection "\
+                  "with the natural domain of log(x),\ni.e., we consider "\
+                  "the interval {}\n".format(intervalRestricted)
+            print txt_warning
+            return Intervalo( mp.log(intervalRestricted.lo), mp.log(intervalRestricted.hi) )
+        elif 0 > self.hi:
+            txt_error = 'Interval {} < 0\nlog cannot be computed '\
+                'for negative numbers.'.format(self)
+            raise ValueError( txt_error )
+        else:
+            return Intervalo( mp.log(self.lo), mp.log(self.hi) )
 
 
     def __pow__(self, exponent):
         """
         Se calcula la potencia de un intervalo; operador '**'
-        NEEDS TESTING
+        NEEDS LOTS OF TESTING
         """
-        if isinstance(exponent,Intervalo):
+        if isinstance( exponent, Intervalo ):
             # exponent is an interval
-            return ( exponent*self.log() ).exp()
+            if exponent.lo == exponent.hi:
+                # thin interval
+                return self**exponent.lo
+            else:
+                # exponent is a generic interval
+                return ( exponent*self.log() ).exp()
         else:
-            # exponent is float, int, mpf, ...
-            if exponent >= 0:
-                if 0 in self:
-                    try:
-                        return Intervalo( 0, max( self.lo**exponent, self.hi**exponent ) )
-                    except:
-                        raise ValueError('Negative number cannot be raised to a fractional power')
-                else:
+            # exponent is a number (int, float, mpf, ...)
+            if exponent == int(exponent):
+                # exponent is an integer
+                if exponent%2 == 0 and exponent>=0:
+                    return Intervalo( (self.mig())**exponent, (self.mag())**exponent )
+                elif exponent%2 == 1 and exponent>=0:
                     return Intervalo( self.lo**exponent, self.hi**exponent )
-            elif exponent < 0:
-                try:
-                    return self.reciprocal()**(-exponent)
-                except:
-                    raise ZeroDivisionError("Interval contains 0.")
+                elif exponent<0:
+                    try:
+                        return self.reciprocal()**(-exponent)
+                    except:
+                        raise ZeroDivisionError("Interval contains 0.")
+            else:
+                # exponent is a generic float
+                if exponent >= 0:
+                    if 0 in self:
+                        domainNatural = Intervalo( 0, mpf('inf') )
+                        intervalRestricted = self.intersection( domainNatural )
+                        txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
+                        print txt_warning
+                        txt_warning = "The interval shall be restricted to its intersection "\
+                              "with the natural domain\nof x**exponent, i.e., we "\
+                              "consider the interval {}\n".format(intervalRestricted)
+                        print txt_warning
+                        return Intervalo( 0, self.hi**exponent )
+                    else:
+                        try:
+                            return Intervalo( self.lo**exponent, self.hi**exponent )
+                        except:
+                            txt_error = 'Interval {} < 0.\nNegative numbers '\
+                                'cannot be raised to a non-integer exponent.'.format(self)
+                            raise ValueError( txt_error )
+                elif exponent < 0:
+                    try:
+                        return self.reciprocal()**(-exponent)
+                    except:
+                        txt_error = 'Interval {} contains 0.'.format(self)
+                        raise ZeroDivisionError( txt_error )
+            
 
 
     def __rpow__(self,exponent):
@@ -354,7 +397,6 @@ class Intervalo(object):
 
     # Representaciones especiales para el IPython Notebook:
     def _repr_html_(self):
-        #return "[{}, {}]".format(self.lo, self.hi)
         reprn = "[{}, {}]".format(self.lo, self.hi)
         reprn = reprn.replace("inf", r"&infin;")
         return reprn

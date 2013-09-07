@@ -1,3 +1,5 @@
+import Base.show
+
 type Interval
     lo
     hi
@@ -34,10 +36,10 @@ end
 *(a::Interval, b) = a * Interval(b)
 *(a, b::Interval) = Interval(a) * b
 
-contains(a::Interval, x) = a.lo <= x <= a.hi
+in(x, a::Interval) = a.lo <= x <= a.hi
 
 function reciprocal(a::Interval)
-	if contains(a, zero(a.lo))  
+	if zero(a.lo) in a  
 		error("Dividing by interval containing 0")
 	else
 		return Interval(one(a.hi)/a.hi, one(a.lo)/a.lo)
@@ -50,7 +52,7 @@ end
 
 intersection(a::Interval, b::Interval) = a.hi < b.lo ? None : Interval(b.lo, a.hi)
 
-
+show(io::IO, x::Interval) = print("[$(x.lo), $(x.hi)]")
 
 
 

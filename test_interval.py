@@ -17,7 +17,7 @@ def test_adicion():
 	assert c2.lo == 5.3 and c2.hi == 6.3
 	assert c3.lo == 5.3 and c3.hi == 6.3
 	
-@raises(ValueError)
+#@raises(ValueError)
 def test_pow():
 	a = Intervalo(-1,1)
 	b = a**2
@@ -34,8 +34,8 @@ def test_pow():
 	assert c.lo == 1 and c.hi == 4
 	c = b**3
 	assert c.lo == -8 and c.hi == -1
-	c = b**2.5
-	raise ValueError("Lanzar este error es ok")
+	#c = b**2.5
+	#raise ValueError("Lanzar este error es ok")
 	#
 	c = a**b
 	assert c.lo == 1 and c.hi == c.hi == mpf('inf')

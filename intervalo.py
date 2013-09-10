@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
+
 # Usamos mpmath para las funciones elementales (exp, log, sin, cos, tan, etc)
 # para adem\'as poder usar precisi\'on extendida
 
-from sympy.mpmath import mp, mpf
+from sympy.mpmath import mp, mpf, log, exp
+import numpy as np
 
 class Intervalo(object):
 
@@ -149,6 +152,9 @@ class Intervalo(object):
         """
         return self.lo <= x <= self.hi
 
+    def strictly_contains(self, x):
+        return self.lo < x < self.hi
+
 
     def __abs__(self):  # use as abs(i)
         return max( abs(self.lo), abs(self.hi) )
@@ -162,11 +168,22 @@ class Intervalo(object):
         """
         Esto define el rec\'iproco de un intervalo
         """
-        if 0 in self:
+        if self.strictly_contains(0):
             txt_error = "Interval {} in denominator contains 0.".format(self)
             raise ZeroDivisionError( txt_error )
 
-        return Intervalo( 1.0/self.hi, 1.0/self.lo )
+        try:
+            lower = 1. / self.hi
+        except:
+            lower = - mpf("inf")
+
+        try:
+            upper = 1. / self.lo
+        except:
+            upper = mpf("inf")
+
+        #return Intervalo( 1.0/self.hi, 1.0/self.lo )
+        return Intervalo(lower, upper)
 
     
     # pow, rpow, abs, sin, cos, ...
@@ -175,9 +192,10 @@ class Intervalo(object):
         """
         Exponencial de un intervalo: 'self.exp()'
         """
-        return Intervalo( mp.exp(self.lo), mp.exp(self.hi))
+        return Intervalo( mp.exp(self.lo), mp.exp(self.hi) )
 
     def log(self):
+
         """
         Logaritmo de un intervalo: 'self.log()'
 
@@ -185,20 +203,26 @@ class Intervalo(object):
         se calcula el logaritmo de la intersecci\'on  del intervalo con el dominio
         natural del logaritmo, i.e., [0,+inf].
         """
+        
         if 0 in self:
-            domainNatural = Intervalo( 0,mpf('inf') )
+
+            domainNatural = Intervalo( 0, mpf('inf') )
             intervalRestricted = self.intersection( domainNatural )
+
             txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
             print txt_warning
-            txt_warning = "The interval shall be restricted to its intersection "\
-                  "with the natural domain of log(x),\ni.e., we consider "\
-                  "the interval {}\n".format(intervalRestricted)
+            
+            txt_warning = "Restricting to the intersection "\
+                  "with the natural domain of log, i.e. {}\n".format(intervalRestricted)
             print txt_warning
+            
             return Intervalo( mp.log(intervalRestricted.lo), mp.log(intervalRestricted.hi) )
+
         elif 0 > self.hi:
             txt_error = 'Interval {} < 0\nlog cannot be computed '\
                 'for negative numbers.'.format(self)
             raise ValueError( txt_error )
+
         else:
             return Intervalo( mp.log(self.lo), mp.log(self.hi) )
 
@@ -208,53 +232,49 @@ class Intervalo(object):
         Se calcula la potencia de un intervalo; operador '**'
         NEEDS LOTS OF TESTING
         """
-        if isinstance( exponent, Intervalo ):
-            # exponent is an interval
-            if exponent.lo == exponent.hi:
-                # thin interval
+        if isinstance( exponent, Intervalo ): # exponent is an interval
+
+            if exponent.lo == exponent.hi: # exponent is a thin interval
                 return self**exponent.lo
-            else:
-                # exponent is a generic interval
+
+            else: # exponent is a generic interval
                 return ( exponent*self.log() ).exp()
-        else:
-            # exponent is a number (int, float, mpf, ...)
-            if exponent == int(exponent):
-                # exponent is an integer
-                if exponent%2 == 0 and exponent>=0:
-                    return Intervalo( (self.mig())**exponent, (self.mag())**exponent )
-                elif exponent%2 == 1 and exponent>=0:
-                    return Intervalo( self.lo**exponent, self.hi**exponent )
-                elif exponent<0:
-                    try:
-                        return self.reciprocal()**(-exponent)
-                    except:
-                        raise ZeroDivisionError("Interval contains 0.")
+
+        else: # exponent is a number (int, float, mpf, ...)
+            
+            if exponent == int(exponent):  # exponent is an integer
+
+                if exponent >= 0:
+                    if exponent%2 == 0:  # even exponent
+                        return Intervalo( self.mig()**exponent, self.mag()**exponent )
+
+                    else:  # odd exponent
+                        return Intervalo( self.lo**exponent, self.hi**exponent )
+
+                else:   # exponent < 0
+                    return (self**(-exponent)).reciprocal()
+
             else:
                 # exponent is a generic float
                 if exponent >= 0:
                     if 0 in self:
                         domainNatural = Intervalo( 0, mpf('inf') )
                         intervalRestricted = self.intersection( domainNatural )
+
                         txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
                         print txt_warning
-                        txt_warning = "The interval shall be restricted to its intersection "\
-                              "with the natural domain\nof x**exponent, i.e., we "\
-                              "consider the interval {}\n".format(intervalRestricted)
+
+                        txt_warning = "Restricting to the intersection "\
+                              "with the natural domain of **, i.e. {}\n".format(intervalRestricted)
                         print txt_warning
+
                         return Intervalo( 0, self.hi**exponent )
+
                     else:
-                        try:
-                            return Intervalo( self.lo**exponent, self.hi**exponent )
-                        except:
-                            txt_error = 'Interval {} < 0.\nNegative numbers '\
-                                'cannot be raised to a non-integer exponent.'.format(self)
-                            raise ValueError( txt_error )
-                elif exponent < 0:
-                    try:
-                        return self.reciprocal()**(-exponent)
-                    except:
-                        txt_error = 'Interval {} contains 0.'.format(self)
-                        raise ZeroDivisionError( txt_error )
+                        return Intervalo( self.lo**exponent, self.hi**exponent )
+
+                else:
+                    return (self**(-exponent)).reciprocal()
             
 
 
@@ -384,11 +404,11 @@ class Intervalo(object):
         return 0.5*(self.lo+self.hi)
 
     def mag(self):
-        """Distancia m\'axima (magnitude) al origen"""
+        """Distancia máxima (magnitude) al origen"""
         return max( abs(self.lo), abs(self.hi) )
 
     def mig(self):
-        """Distancia m\'inima (mignitude) al origen"""
+        """Distancia mínima (mignitude) al origen"""
         if 0 in self:
             return 0
         else:
@@ -412,6 +432,7 @@ class Intervalo(object):
         return Intervalo(a)
 
 
+# Funciones extras
 def make_mpf(a):
 
 	if isinstance(a, mpf):
@@ -419,10 +440,40 @@ def make_mpf(a):
 
 	return mpf(str(a))
 
-
 def exp(a):
     return a.exp()
 
+def log(a):
+    return a.log()
+
+def split_interval( x, num_divisions=1 ):
+    """
+    Divide un intervalo en n=num_divisions intervalos iguales
+    """
+    num_divisions = int(num_divisions)
+    if num_divisions < 1:
+        num_divisions = 1
+
+    edge_points = np.linspace(x.lo, x.hi, num_divisions+1)
+    splited_intervals = [Intervalo(a, b) for (a,b) in zip(edge_points[:-1], edge_points[1:])]
+
+    return splited_intervals
+
+def range_interval_f( fun, subdivided_interval ):
+    """
+    Evalua la función f(x) extendida sobre intervalos, en una lista de subintervalos
+    y regresa el hull de todos ellos, es decir, una cota del rango de la función
+    """
+    if not isinstance( subdivided_interval, list ):
+        subdivided_interval = [ subdivided_interval ]
+
+    range_fun = [ fun(i) for i in subdivided_interval ]
+    range_tot = range_fun[0]
+
+    for i in range_fun[1:]:
+        range_tot = range_tot.hull(i)
+
+    return range_tot
 
 
 # Correct (directed) rounding:

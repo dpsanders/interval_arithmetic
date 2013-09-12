@@ -1,13 +1,15 @@
+# -*- coding: utf-8 -*-
+
 # Usamos mpmath para las funciones elementales (exp, log, sin, cos, tan, etc)
 # para adem\'as poder usar precisi\'on extendida
 
 from sympy.mpmath import mp, mpf
+import numpy as np
 
 class Intervalo(object):
-
     """
     Se define la clase 'Intervalo', y la aritm\'etica b\'asica de intervalos, 
-    es decir, suma, resta, multiplicaci\'on y divisi\'on. 
+    es decir, suma, resta, multiplicaci\'on y divisi\'on, y las funciones básicas.
 
     Se carga antes (internamente) mp y mpf de mpmath para usar las funciones 
     elementales y poder usar precisi\'on extendida de manera sencilla.
@@ -18,6 +20,7 @@ class Intervalo(object):
         Se define la clase 'Intervalo', y los m\'etodos para la aritm\'etica 
         b\'asica de intervalos, es decir, suma, resta, multiplicaci\'on y 
         divisi\'on. 
+
         Se incluyen otras funciones (sin, cos, exp, log) que ser\'an \'utiles.
         """
 
@@ -149,8 +152,12 @@ class Intervalo(object):
         """
         return self.lo <= x <= self.hi
 
+    def strictly_contains(self, x):
+        return self.lo < x < self.hi
+
 
     def __abs__(self):  # use as abs(i)
+        """La máxima distancia de los bordes al cero"""
         return max( abs(self.lo), abs(self.hi) )
 
 
@@ -162,11 +169,22 @@ class Intervalo(object):
         """
         Esto define el rec\'iproco de un intervalo
         """
-        if 0 in self:
+        if self.strictly_contains(0):
             txt_error = "Interval {} in denominator contains 0.".format(self)
             raise ZeroDivisionError( txt_error )
 
-        return Intervalo( 1.0/self.hi, 1.0/self.lo )
+        try:
+            lower = 1. / self.hi
+        except:
+            lower = - mpf("inf")
+
+        try:
+            upper = 1. / self.lo
+        except:
+            upper = mpf("inf")
+
+        #return Intervalo( 1.0/self.hi, 1.0/self.lo )
+        return Intervalo(lower, upper)
 
     
     # pow, rpow, abs, sin, cos, ...
@@ -175,7 +193,7 @@ class Intervalo(object):
         """
         Exponencial de un intervalo: 'self.exp()'
         """
-        return Intervalo( mp.exp(self.lo), mp.exp(self.hi))
+        return Intervalo( mp.exp(self.lo), mp.exp(self.hi) )
 
     def log(self):
         """
@@ -185,20 +203,26 @@ class Intervalo(object):
         se calcula el logaritmo de la intersecci\'on  del intervalo con el dominio
         natural del logaritmo, i.e., [0,+inf].
         """
+        
         if 0 in self:
-            domainNatural = Intervalo( 0,mpf('inf') )
+
+            domainNatural = Intervalo( 0, mpf('inf') )
             intervalRestricted = self.intersection( domainNatural )
+
             txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
             print txt_warning
-            txt_warning = "The interval shall be restricted to its intersection "\
-                  "with the natural domain of log(x),\ni.e., we consider "\
-                  "the interval {}\n".format(intervalRestricted)
+            
+            txt_warning = "Restricting to the intersection "\
+                  "with the natural domain of log, i.e. {}\n".format(intervalRestricted)
             print txt_warning
+            
             return Intervalo( mp.log(intervalRestricted.lo), mp.log(intervalRestricted.hi) )
+
         elif 0 > self.hi:
             txt_error = 'Interval {} < 0\nlog cannot be computed '\
                 'for negative numbers.'.format(self)
             raise ValueError( txt_error )
+
         else:
             return Intervalo( mp.log(self.lo), mp.log(self.hi) )
 
@@ -206,57 +230,51 @@ class Intervalo(object):
     def __pow__(self, exponent):
         """
         Se calcula la potencia de un intervalo; operador '**'
-        NEEDS LOTS OF TESTING
+        UNDER TESTING
         """
-        if isinstance( exponent, Intervalo ):
-            # exponent is an interval
-            if exponent.lo == exponent.hi:
-                # thin interval
+        if isinstance( exponent, Intervalo ): # exponent is an interval
+
+            if exponent.lo == exponent.hi: # exponent is a thin interval
                 return self**exponent.lo
-            else:
-                # exponent is a generic interval
+
+            else: # exponent is a generic interval
                 return ( exponent*self.log() ).exp()
-        else:
-            # exponent is a number (int, float, mpf, ...)
-            if exponent == int(exponent):
-                # exponent is an integer
-                if exponent%2 == 0 and exponent>=0:
-                    return Intervalo( (self.mig())**exponent, (self.mag())**exponent )
-                elif exponent%2 == 1 and exponent>=0:
-                    return Intervalo( self.lo**exponent, self.hi**exponent )
-                elif exponent<0:
-                    try:
-                        return self.reciprocal()**(-exponent)
-                    except:
-                        raise ZeroDivisionError("Interval contains 0.")
+
+        else: # exponent is a number (int, float, mpf, ...)
+            
+            if exponent == int(exponent):  # exponent is an integer
+
+                if exponent >= 0:
+                    if exponent%2 == 0:  # even exponent
+                        return Intervalo( self.mig()**exponent, self.mag()**exponent )
+
+                    else:  # odd exponent
+                        return Intervalo( self.lo**exponent, self.hi**exponent )
+
+                else:   # exponent < 0
+                    return (self**(-exponent)).reciprocal()
+
             else:
                 # exponent is a generic float
                 if exponent >= 0:
                     if 0 in self:
                         domainNatural = Intervalo( 0, mpf('inf') )
                         intervalRestricted = self.intersection( domainNatural )
+
                         txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
                         print txt_warning
-                        txt_warning = "The interval shall be restricted to its intersection "\
-                              "with the natural domain\nof x**exponent, i.e., we "\
-                              "consider the interval {}\n".format(intervalRestricted)
-                        print txt_warning
-                        return Intervalo( 0, self.hi**exponent )
-                    else:
-                        try:
-                            return Intervalo( self.lo**exponent, self.hi**exponent )
-                        except:
-                            txt_error = 'Interval {} < 0.\nNegative numbers '\
-                                'cannot be raised to a non-integer exponent.'.format(self)
-                            raise ValueError( txt_error )
-                elif exponent < 0:
-                    try:
-                        return self.reciprocal()**(-exponent)
-                    except:
-                        txt_error = 'Interval {} contains 0.'.format(self)
-                        raise ZeroDivisionError( txt_error )
-            
 
+                        txt_warning = "Restricting to the intersection "\
+                              "with the natural domain of **, i.e. {}\n".format(intervalRestricted)
+                        print txt_warning
+
+                        return Intervalo( 0, self.hi**exponent )
+
+                    else:
+                        return Intervalo( self.lo**exponent, self.hi**exponent )
+
+                else:
+                    return (self**(-exponent)).reciprocal()
 
     def __rpow__(self,exponent):
         return Intervalo(exponent)**self
@@ -265,16 +283,116 @@ class Intervalo(object):
     def sin(self):
         """
         Se calcula el seno de un intervalo
-        NOT YET IMPLEMENTED
+        TEST CAREFULLY
         """
-        raise NotImplementedError('self.sin() is not yet implemented for Intervalo')
+        pi = mp.pi
+        pi_half = 0.5 * pi
+        dospi = 2.0 * pi
+        xlow, xhig = self.lo, self.hi
+        whole_range = Intervalo(-1,1)
+
+        # Check the specific case:
+        if xhig > xlow + dospi: # more than 1 full period away
+            return whole_range
+        
+        else: # within 1 full period of sin(x); 20 cases
+            # some abreviations
+            lo_mod2pi = xlow % dospi
+            hi_mod2pi = xhig % dospi
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
+            sin_xlo = mp.sin( xlow )
+            sin_xhi = mp.sin( xhig )
+            min_sin, max_sin = sin_xlo, sin_xhi
+            if sin_xhi < sin_xlo:
+                min_sin, max_sin = sin_xhi, sin_xlo
+                
+            if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
+
+                if lo_mod2pi <= hi_mod2pi:
+                    return Intervalo( sin_xlo, sin_xhi )
+                else:
+                    return whole_range
+
+            else:
+                
+                if ( lo_quarter == 3 and hi_quarter==0 ) or \
+                ( lo_quarter == 1 and hi_quarter==2 ) : # 2 cases
+                    return Intervalo( sin_xlo, sin_xhi )
+                
+                elif ( lo_quarter == 0 or lo_quarter==3 ) and \
+                ( hi_quarter==1 or hi_quarter==2 ) : # 4 cases
+                    return Intervalo( min_sin, 1 )
+                
+                elif ( lo_quarter == 1 or lo_quarter==2 ) and \
+                ( hi_quarter==3 or hi_quarter==0 ) : # 4 cases
+                    return Intervalo( -1, max_sin )
+                
+                elif ( lo_quarter == 0 and hi_quarter==3 ) or \
+                ( lo_quarter == 2 and hi_quarter==1 ) : # 2 cases
+                    return whole_range
+                
+                else: # This should be never reached!
+                    raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
+                        been reached' )
+
 
     def cos(self):
         """
-        Se calcula el seno de un intervalo
-        NOT YET IMPLEMENTED
+        Se calcula el coseno de un intervalo
+        TEST CAREFULLY
         """
-        raise NotImplementedError('self.cos() is not yet implemented for Intervalo')
+        pi = mp.pi
+        pi_half = 0.5 * pi
+        dospi = 2.0 * pi
+        xlow, xhig = self.lo, self.hi
+        whole_range = Intervalo(-1,1)
+
+        # Check the specific case:
+        if xhig > xlow + dospi: # more than 1 full period away
+            return whole_range
+        
+        else: # within 1 full period of sin(x); 20 cases
+            # some abreviations
+            lo_mod2pi = xlow % dospi
+            hi_mod2pi = xhig % dospi
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
+            cos_xlo = mp.cos( xlow )
+            cos_xhi = mp.cos( xhig )
+            min_cos, max_cos = cos_xlo, cos_xhi
+            if cos_xhi < cos_xlo:
+                min_cos, max_cos = cos_xhi, cos_xlo
+                
+            if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
+
+                if lo_mod2pi <= hi_mod2pi:
+                    return Intervalo( cos_xlo, cos_xhi )
+                else:
+                    return whole_range
+
+            else:
+                
+                if ( lo_quarter == 2 and hi_quarter==3 ) or \
+                ( lo_quarter == 0 and hi_quarter==1 ) : # 2 cases
+                    return Intervalo( cos_xlo, cos_xhi )
+                
+                elif ( lo_quarter == 2 or lo_quarter==3 ) and \
+                ( hi_quarter==0 or hi_quarter==1 ) : # 4 cases
+                    return Intervalo( min_cos, 1 )
+                
+                elif ( lo_quarter == 0 or lo_quarter==1 ) and \
+                ( hi_quarter==2 or hi_quarter==3 ) : # 4 cases
+                    return Intervalo( -1, max_cos )
+                
+                elif ( lo_quarter == 3 and hi_quarter==2 ) or \
+                ( lo_quarter == 1 and hi_quarter==0 ) : # 2 cases
+                    return whole_range
+                
+                else: # This should be never reached!
+                    raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
+                        been reached' )
+
 
 
     # Las relaciones que sirven para checar el orden parcial
@@ -384,11 +502,11 @@ class Intervalo(object):
         return 0.5*(self.lo+self.hi)
 
     def mag(self):
-        """Distancia m\'axima (magnitude) al origen"""
+        """Distancia máxima (magnitude) al origen"""
         return max( abs(self.lo), abs(self.hi) )
 
     def mig(self):
-        """Distancia m\'inima (mignitude) al origen"""
+        """Distancia mínima (mignitude) al origen"""
         if 0 in self:
             return 0
         else:
@@ -404,7 +522,6 @@ class Intervalo(object):
     def _repr_latex_(self):
         return "$[{}, {}]$".format(self.lo, self.hi)
 
-
     def make_interval(self, a):
         if isinstance(a, Intervalo):
             return a
@@ -412,6 +529,7 @@ class Intervalo(object):
         return Intervalo(a)
 
 
+# Funciones extras
 def make_mpf(a):
 
 	if isinstance(a, mpf):
@@ -423,6 +541,48 @@ def make_mpf(a):
 def exp(a):
     return a.exp()
 
+
+def log(a):
+    return a.log()
+
+
+def sin(a):
+    return a.sin()
+
+
+def cos(a):
+    return a.cos()
+
+
+def split_interval( x, num_divisions=1 ):
+    """
+    Divide un intervalo en n=num_divisions intervalos iguales
+    """
+    num_divisions = int(num_divisions)
+    if num_divisions < 1:
+        num_divisions = 1
+
+    edge_points = np.linspace(x.lo, x.hi, num_divisions+1)
+    splited_intervals = [Intervalo(a, b) for (a,b) in zip(edge_points[:-1], edge_points[1:])]
+
+    return splited_intervals
+
+
+def range_interval_f( fun, subdivided_interval ):
+    """
+    Evalua la función f(x) extendida sobre intervalos, en una lista de subintervalos
+    y regresa el hull de todos ellos, es decir, una cota del rango de la función
+    """
+    if not isinstance( subdivided_interval, list ):
+        subdivided_interval = [ subdivided_interval ]
+
+    range_fun = [ fun(i) for i in subdivided_interval ]
+    range_tot = range_fun[0]
+
+    for i in range_fun[1:]:
+        range_tot = range_tot.hull(i)
+
+    return range_tot
 
 
 # Correct (directed) rounding:

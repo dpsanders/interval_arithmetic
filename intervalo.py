@@ -171,7 +171,9 @@ class Intervalo(object):
         """
         if self.strictly_contains(0):
             txt_error = "Interval {} in denominator contains 0.".format(self)
-            raise ZeroDivisionError( txt_error )
+            #raise ZeroDivisionError( txt_error )
+            lower = - mpf("inf")
+            upper = mpf("inf")
 
         try:
             lower = 1. / self.hi
@@ -299,13 +301,10 @@ class Intervalo(object):
             # some abreviations
             lo_mod2pi = xlow % dospi
             hi_mod2pi = xhig % dospi
-            lo_quarter = mp.floor( lo_mod2pi / pi_half )
-            hi_quarter = mp.floor( hi_mod2pi / pi_half )
             sin_xlo = mp.sin( xlow )
             sin_xhi = mp.sin( xhig )
-            min_sin, max_sin = sin_xlo, sin_xhi
-            if sin_xhi < sin_xlo:
-                min_sin, max_sin = sin_xhi, sin_xlo
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
                 
             if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
 
@@ -315,6 +314,10 @@ class Intervalo(object):
                     return whole_range
 
             else:
+                # other abreviations
+                min_sin, max_sin = sin_xlo, sin_xhi
+                if sin_xhi < sin_xlo:
+                    min_sin, max_sin = sin_xhi, sin_xlo
                 
                 if ( lo_quarter == 3 and hi_quarter==0 ) or \
                 ( lo_quarter == 1 and hi_quarter==2 ) : # 2 cases
@@ -360,9 +363,6 @@ class Intervalo(object):
             hi_quarter = mp.floor( hi_mod2pi / pi_half )
             cos_xlo = mp.cos( xlow )
             cos_xhi = mp.cos( xhig )
-            min_cos, max_cos = cos_xlo, cos_xhi
-            if cos_xhi < cos_xlo:
-                min_cos, max_cos = cos_xhi, cos_xlo
                 
             if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
 
@@ -372,7 +372,11 @@ class Intervalo(object):
                     return whole_range
 
             else:
-                
+                # other abreviations                
+                min_cos, max_cos = cos_xlo, cos_xhi
+                if cos_xhi < cos_xlo:
+                    min_cos, max_cos = cos_xhi, cos_xlo
+
                 if ( lo_quarter == 2 and hi_quarter==3 ) or \
                 ( lo_quarter == 0 and hi_quarter==1 ) : # 2 cases
                     return Intervalo( cos_xlo, cos_xhi )
@@ -393,6 +397,52 @@ class Intervalo(object):
                     raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
                         been reached' )
 
+
+    def tan(self):
+        """
+        Se calcula la tangente de un intervalo
+        TEST CAREFULLY
+        """
+        pi = mp.pi
+        pi_half = 0.5 * pi
+        dospi = 2.0 * pi
+        xlow, xhig = self.lo, self.hi
+        inf = float('inf')
+        whole_range = Intervalo(-inf, inf)
+
+        # Check the specific case:
+        if xhig > xlow + pi: # more than 1 full period away
+            return whole_range
+        
+        else: # within 1 full period of sin(x); 6 cases
+            # some abreviations
+            lo_modpi = xlow % pi
+            hi_modpi = xhig % pi
+            lo_quarter = mp.floor( lo_modpi / pi_half )
+            hi_quarter = mp.floor( hi_modpi / pi_half )
+            tan_xlo = mp.tan( xlow )
+            tan_xhi = mp.tan( xhig )
+                
+            if lo_quarter == hi_quarter: # mismo cuadrante --> 4 casos
+                if lo_modpi <= hi_modpi:
+                    return Intervalo( tan_xlo, tan_xhi )
+                else:
+                    return whole_range
+            else:
+                
+                min_tan, max_tan = tan_xlo, tan_xhi
+                if tan_xhi < tan_xlo:
+                    min_tan, max_tan = tan_xhi, tan_xlo
+
+                if ( lo_quarter == 1 and hi_quarter==0 ) : # 1 case
+                    return Intervalo( tan_xlo, tan_xhi )
+                
+                elif ( lo_quarter == 0 or lo_quarter==1 ) : # 1 case
+                    return whole_range
+                
+                else: # This should be never reached!
+                    raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
+                        been reached' )
 
 
     # Las relaciones que sirven para checar el orden parcial
@@ -552,6 +602,10 @@ def sin(a):
 
 def cos(a):
     return a.cos()
+
+
+def tan(a):
+    return a.tan()
 
 
 def split_interval( x, num_divisions=1 ):

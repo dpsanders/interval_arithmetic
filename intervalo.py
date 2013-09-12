@@ -3,14 +3,13 @@
 # Usamos mpmath para las funciones elementales (exp, log, sin, cos, tan, etc)
 # para adem\'as poder usar precisi\'on extendida
 
-from sympy.mpmath import mp, mpf, log, exp
+from sympy.mpmath import mp, mpf
 import numpy as np
 
 class Intervalo(object):
-
     """
     Se define la clase 'Intervalo', y la aritm\'etica b\'asica de intervalos, 
-    es decir, suma, resta, multiplicaci\'on y divisi\'on. 
+    es decir, suma, resta, multiplicaci\'on y divisi\'on, y las funciones básicas.
 
     Se carga antes (internamente) mp y mpf de mpmath para usar las funciones 
     elementales y poder usar precisi\'on extendida de manera sencilla.
@@ -21,6 +20,7 @@ class Intervalo(object):
         Se define la clase 'Intervalo', y los m\'etodos para la aritm\'etica 
         b\'asica de intervalos, es decir, suma, resta, multiplicaci\'on y 
         divisi\'on. 
+
         Se incluyen otras funciones (sin, cos, exp, log) que ser\'an \'utiles.
         """
 
@@ -157,6 +157,7 @@ class Intervalo(object):
 
 
     def __abs__(self):  # use as abs(i)
+        """La máxima distancia de los bordes al cero"""
         return max( abs(self.lo), abs(self.hi) )
 
 
@@ -195,7 +196,6 @@ class Intervalo(object):
         return Intervalo( mp.exp(self.lo), mp.exp(self.hi) )
 
     def log(self):
-
         """
         Logaritmo de un intervalo: 'self.log()'
 
@@ -230,7 +230,7 @@ class Intervalo(object):
     def __pow__(self, exponent):
         """
         Se calcula la potencia de un intervalo; operador '**'
-        NEEDS LOTS OF TESTING
+        UNDER TESTING
         """
         if isinstance( exponent, Intervalo ): # exponent is an interval
 
@@ -275,8 +275,6 @@ class Intervalo(object):
 
                 else:
                     return (self**(-exponent)).reciprocal()
-            
-
 
     def __rpow__(self,exponent):
         return Intervalo(exponent)**self
@@ -285,16 +283,116 @@ class Intervalo(object):
     def sin(self):
         """
         Se calcula el seno de un intervalo
-        NOT YET IMPLEMENTED
+        TEST CAREFULLY
         """
-        raise NotImplementedError('self.sin() is not yet implemented for Intervalo')
+        pi = mp.pi
+        pi_half = 0.5 * pi
+        dospi = 2.0 * pi
+        xlow, xhig = self.lo, self.hi
+        whole_range = Intervalo(-1,1)
+
+        # Check the specific case:
+        if xhig > xlow + dospi: # more than 1 full period away
+            return whole_range
+        
+        else: # within 1 full period of sin(x); 20 cases
+            # some abreviations
+            lo_mod2pi = xlow % dospi
+            hi_mod2pi = xhig % dospi
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
+            sin_xlo = mp.sin( xlow )
+            sin_xhi = mp.sin( xhig )
+            min_sin, max_sin = sin_xlo, sin_xhi
+            if sin_xhi < sin_xlo:
+                min_sin, max_sin = sin_xhi, sin_xlo
+                
+            if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
+
+                if lo_mod2pi <= hi_mod2pi:
+                    return Intervalo( sin_xlo, sin_xhi )
+                else:
+                    return whole_range
+
+            else:
+                
+                if ( lo_quarter == 3 and hi_quarter==0 ) or \
+                ( lo_quarter == 1 and hi_quarter==2 ) : # 2 cases
+                    return Intervalo( sin_xlo, sin_xhi )
+                
+                elif ( lo_quarter == 0 or lo_quarter==3 ) and \
+                ( hi_quarter==1 or hi_quarter==2 ) : # 4 cases
+                    return Intervalo( min_sin, 1 )
+                
+                elif ( lo_quarter == 1 or lo_quarter==2 ) and \
+                ( hi_quarter==3 or hi_quarter==0 ) : # 4 cases
+                    return Intervalo( -1, max_sin )
+                
+                elif ( lo_quarter == 0 and hi_quarter==3 ) or \
+                ( lo_quarter == 2 and hi_quarter==1 ) : # 2 cases
+                    return whole_range
+                
+                else: # This should be never reached!
+                    raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
+                        been reached' )
+
 
     def cos(self):
         """
-        Se calcula el seno de un intervalo
-        NOT YET IMPLEMENTED
+        Se calcula el coseno de un intervalo
+        TEST CAREFULLY
         """
-        raise NotImplementedError('self.cos() is not yet implemented for Intervalo')
+        pi = mp.pi
+        pi_half = 0.5 * pi
+        dospi = 2.0 * pi
+        xlow, xhig = self.lo, self.hi
+        whole_range = Intervalo(-1,1)
+
+        # Check the specific case:
+        if xhig > xlow + dospi: # more than 1 full period away
+            return whole_range
+        
+        else: # within 1 full period of sin(x); 20 cases
+            # some abreviations
+            lo_mod2pi = xlow % dospi
+            hi_mod2pi = xhig % dospi
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
+            cos_xlo = mp.cos( xlow )
+            cos_xhi = mp.cos( xhig )
+            min_cos, max_cos = cos_xlo, cos_xhi
+            if cos_xhi < cos_xlo:
+                min_cos, max_cos = cos_xhi, cos_xlo
+                
+            if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
+
+                if lo_mod2pi <= hi_mod2pi:
+                    return Intervalo( cos_xlo, cos_xhi )
+                else:
+                    return whole_range
+
+            else:
+                
+                if ( lo_quarter == 2 and hi_quarter==3 ) or \
+                ( lo_quarter == 0 and hi_quarter==1 ) : # 2 cases
+                    return Intervalo( cos_xlo, cos_xhi )
+                
+                elif ( lo_quarter == 2 or lo_quarter==3 ) and \
+                ( hi_quarter==0 or hi_quarter==1 ) : # 4 cases
+                    return Intervalo( min_cos, 1 )
+                
+                elif ( lo_quarter == 0 or lo_quarter==1 ) and \
+                ( hi_quarter==2 or hi_quarter==3 ) : # 4 cases
+                    return Intervalo( -1, max_cos )
+                
+                elif ( lo_quarter == 3 and hi_quarter==2 ) or \
+                ( lo_quarter == 1 and hi_quarter==0 ) : # 2 cases
+                    return whole_range
+                
+                else: # This should be never reached!
+                    raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
+                        been reached' )
+
 
 
     # Las relaciones que sirven para checar el orden parcial
@@ -424,7 +522,6 @@ class Intervalo(object):
     def _repr_latex_(self):
         return "$[{}, {}]$".format(self.lo, self.hi)
 
-
     def make_interval(self, a):
         if isinstance(a, Intervalo):
             return a
@@ -440,11 +537,22 @@ def make_mpf(a):
 
 	return mpf(str(a))
 
+
 def exp(a):
     return a.exp()
 
+
 def log(a):
     return a.log()
+
+
+def sin(a):
+    return a.sin()
+
+
+def cos(a):
+    return a.cos()
+
 
 def split_interval( x, num_divisions=1 ):
     """
@@ -458,6 +566,7 @@ def split_interval( x, num_divisions=1 ):
     splited_intervals = [Intervalo(a, b) for (a,b) in zip(edge_points[:-1], edge_points[1:])]
 
     return splited_intervals
+
 
 def range_interval_f( fun, subdivided_interval ):
     """

@@ -30,8 +30,6 @@ class Intervalo(object):
         elif (b < a):  # limits wrong way round; not right approach for extended IA
             a, b = b, a
 
-        # print(a, type(a), b, type(b))
-
         a = make_mpf(a)
         b = make_mpf(b)
 
@@ -148,21 +146,13 @@ class Intervalo(object):
 
     def __contains__(self, x):
         """
-        Esto verifica si el intervalo contiene (o no) un n\'umero real
+        Esto verifica si el intervalo contiene (o no) un n\'umero real;
+        implementa al operador `is`
         """
         return self.lo <= x <= self.hi
 
     def strictly_contains(self, x):
         return self.lo < x < self.hi
-
-
-    def __abs__(self):  # use as abs(i)
-        """La máxima distancia de los bordes al cero"""
-        return max( abs(self.lo), abs(self.hi) )
-
-
-    def abs(self):     # use as i.abs()
-        return abs(self)
 
 
     def reciprocal(self):
@@ -211,17 +201,17 @@ class Intervalo(object):
             domainNatural = Intervalo( 0, mpf('inf') )
             intervalRestricted = self.intersection( domainNatural )
 
-            txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
+            txt_warning = "\nWARNING: Interval {} contains 0 or negative numbers.\n".format(self)
             print txt_warning
             
             txt_warning = "Restricting to the intersection "\
-                  "with the natural domain of log, i.e. {}\n".format(intervalRestricted)
+                "with the natural domain of log(x), i.e. {}\n".format(intervalRestricted)
             print txt_warning
             
             return Intervalo( mp.log(intervalRestricted.lo), mp.log(intervalRestricted.hi) )
 
         elif 0 > self.hi:
-            txt_error = 'Interval {} < 0\nlog cannot be computed '\
+            txt_error = 'Interval {} < 0\nlog(x) cannot be computed '\
                 'for negative numbers.'.format(self)
             raise ValueError( txt_error )
 
@@ -484,31 +474,37 @@ class Intervalo(object):
         """
         if not isinstance(otro, Intervalo):
             otro = Intervalo(otro)
+
         if self._is_empty_intersection(otro):
             print "Intersection is empty: " \
                   "Intervals {} and {} are disjoint".format(self,otro)
+
         else:
             return Intervalo( max(self.lo,otro.lo), min(self.hi,otro.hi) )
 
     def hull(self, otro):
-        """Envoltura/caso de dos intervalos"""
+        """Envoltura/casco de dos intervalos"""
         return Intervalo( min(self.lo,otro.lo), max(self.hi,otro.hi) )
 
     def union(self, otro):
         """Uni\'on de intervalos"""
         if not isinstance(otro, Intervalo):
             otro = Intervalo(otro)
+
         if self._is_empty_intersection(otro):
             print "Union yields no connected interval: " \
                   "Intervals {} and {} are disjoint".format(self,otro)
         else:
             return self.hull(otro)
 
-    # Algunas funciones escalares de intervalos
+    # Algunas funciones escalares de intervalos (ver Tucker)
     def diam(self):
         return self.hi-self.lo
 
-    def centre(self):
+    def rad(self):
+        return diam(self)*0.5
+
+    def mid(self):
         return 0.5*(self.lo+self.hi)
 
     def mag(self):
@@ -522,6 +518,24 @@ class Intervalo(object):
         else:
             return min( abs(self.lo), abs(self.hi) )
 
+    def __abs__(self):  # use as abs(i)
+        """
+        Esto define la función abs() de un intervalo, cuyo resultado
+        es un intervalo (ver Tucker).
+
+        NOTA: La función que regresa la máxima distancia al origen es `self.mag()`
+        (magnitud) y la que regresa la mínima distancia es `self.mig()` ('mignitud').
+        """
+        return Intervalo( self.mig(), self.mag() )
+
+    def abs(self):     # use as i.abs()
+        return abs(self)
+
+    def dist(self, otro):
+        """
+        Esto define la distancia de Hausdorff entre dos intervalos; ver Tucker.
+        """
+        return max( abs(self.lo-otro.lo), abs(self.hi-otro.hi) )
 
     # Representaciones especiales para el IPython Notebook:
     def _repr_html_(self):

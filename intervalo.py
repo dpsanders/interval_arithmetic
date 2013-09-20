@@ -239,7 +239,7 @@ class Intervalo(object):
 
                 if exponent >= 0:
                     if exponent%2 == 0:  # even exponent
-                        return Intervalo( self.mig()**exponent, self.mag()**exponent )
+                        return Intervalo( (self.mig())**exponent, (self.mag())**exponent )
 
                     else:  # odd exponent
                         return Intervalo( self.lo**exponent, self.hi**exponent )
@@ -262,6 +262,9 @@ class Intervalo(object):
                         print txt_warning
 
                         return Intervalo( 0, self.hi**exponent )
+
+                    elif 0 > self:
+                        raise ValueError("negative interval can not be raised to a fractional power")
 
                     else:
                         return Intervalo( self.lo**exponent, self.hi**exponent )
@@ -564,23 +567,40 @@ def make_mpf(a):
 
 
 def exp(a):
-    return a.exp()
-
+    try:
+        return a.exp()
+    except:
+        return mp.exp(a)
 
 def log(a):
-    return a.log()
-
+    try:
+        return a.log()
+    except:
+        return mp.log(a)
 
 def sin(a):
-    return a.sin()
-
+    try:
+        return a.sin()
+    except:
+        return mp.sin(a)
 
 def cos(a):
-    return a.cos()
-
+    try:
+        return a.cos()
+    except:
+        return mp.cos(a)
 
 def tan(a):
-    return a.tan()
+    try:
+        return a.tan()
+    except:
+        return mp.tan(a)
+
+
+def random_interval( infimum=-10.0, supremum=10.0 ):
+    num1a = np.random.uniform( infimum, supremum )
+    num2a = np.random.uniform( infimum, supremum )
+    return Intervalo( num1a, num2a )
 
 
 def split_interval( x, num_divisions=1 ):

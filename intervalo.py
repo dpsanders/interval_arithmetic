@@ -4,6 +4,7 @@
 # para adem\'as poder usar precisi\'on extendida
 
 from sympy.mpmath import mp, mpf
+from matplotlib import pyplot as plt
 import numpy as np
 
 class Intervalo(object):
@@ -29,8 +30,6 @@ class Intervalo(object):
 
         elif (b < a):  # limits wrong way round; not right approach for extended IA
             a, b = b, a
-
-        # print(a, type(a), b, type(b))
 
         a = make_mpf(a)
         b = make_mpf(b)
@@ -148,7 +147,8 @@ class Intervalo(object):
 
     def __contains__(self, x):
         """
-        Esto verifica si el intervalo contiene (o no) un n\'umero real
+        Esto verifica si el intervalo contiene (o no) un n\'umero real;
+        implementa al operador `is`
         """
         return self.lo <= x <= self.hi
 
@@ -156,23 +156,10 @@ class Intervalo(object):
         return self.lo < x < self.hi
 
 
-    def __abs__(self):  # use as abs(i)
-        """La máxima distancia de los bordes al cero"""
-        return max( abs(self.lo), abs(self.hi) )
-
-
-    def abs(self):     # use as i.abs()
-        return abs(self)
-
-
     def reciprocal(self):
         """
         Esto define el rec\'iproco de un intervalo
         """
-        if self.strictly_contains(0):
-            txt_error = "Interval {} in denominator contains 0.".format(self)
-            raise ZeroDivisionError( txt_error )
-
         try:
             lower = 1. / self.hi
         except:
@@ -181,6 +168,12 @@ class Intervalo(object):
         try:
             upper = 1. / self.lo
         except:
+            upper = mpf("inf")
+
+        if self.strictly_contains(0):
+            txt_error = "Interval {} in denominator contains 0.".format(self)
+            #raise ZeroDivisionError( txt_error )
+            lower = - mpf("inf")
             upper = mpf("inf")
 
         #return Intervalo( 1.0/self.hi, 1.0/self.lo )
@@ -209,17 +202,17 @@ class Intervalo(object):
             domainNatural = Intervalo( 0, mpf('inf') )
             intervalRestricted = self.intersection( domainNatural )
 
-            txt_warning = "\nWARNING: Interval {} contains 0.\n".format(self)
+            txt_warning = "\nWARNING: Interval {} contains 0 or negative numbers.\n".format(self)
             print txt_warning
             
             txt_warning = "Restricting to the intersection "\
-                  "with the natural domain of log, i.e. {}\n".format(intervalRestricted)
+                "with the natural domain of log(x), i.e. {}\n".format(intervalRestricted)
             print txt_warning
             
             return Intervalo( mp.log(intervalRestricted.lo), mp.log(intervalRestricted.hi) )
 
         elif 0 > self.hi:
-            txt_error = 'Interval {} < 0\nlog cannot be computed '\
+            txt_error = 'Interval {} < 0\nlog(x) cannot be computed '\
                 'for negative numbers.'.format(self)
             raise ValueError( txt_error )
 
@@ -246,7 +239,7 @@ class Intervalo(object):
 
                 if exponent >= 0:
                     if exponent%2 == 0:  # even exponent
-                        return Intervalo( self.mig()**exponent, self.mag()**exponent )
+                        return Intervalo( (self.mig())**exponent, (self.mag())**exponent )
 
                     else:  # odd exponent
                         return Intervalo( self.lo**exponent, self.hi**exponent )
@@ -269,6 +262,9 @@ class Intervalo(object):
                         print txt_warning
 
                         return Intervalo( 0, self.hi**exponent )
+
+                    elif 0 > self:
+                        raise ValueError("negative interval can not be raised to a fractional power")
 
                     else:
                         return Intervalo( self.lo**exponent, self.hi**exponent )
@@ -299,13 +295,10 @@ class Intervalo(object):
             # some abreviations
             lo_mod2pi = xlow % dospi
             hi_mod2pi = xhig % dospi
-            lo_quarter = mp.floor( lo_mod2pi / pi_half )
-            hi_quarter = mp.floor( hi_mod2pi / pi_half )
             sin_xlo = mp.sin( xlow )
             sin_xhi = mp.sin( xhig )
-            min_sin, max_sin = sin_xlo, sin_xhi
-            if sin_xhi < sin_xlo:
-                min_sin, max_sin = sin_xhi, sin_xlo
+            lo_quarter = mp.floor( lo_mod2pi / pi_half )
+            hi_quarter = mp.floor( hi_mod2pi / pi_half )
                 
             if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
 
@@ -315,6 +308,10 @@ class Intervalo(object):
                     return whole_range
 
             else:
+                # other abreviations
+                min_sin, max_sin = sin_xlo, sin_xhi
+                if sin_xhi < sin_xlo:
+                    min_sin, max_sin = sin_xhi, sin_xlo
                 
                 if ( lo_quarter == 3 and hi_quarter==0 ) or \
                 ( lo_quarter == 1 and hi_quarter==2 ) : # 2 cases
@@ -360,9 +357,6 @@ class Intervalo(object):
             hi_quarter = mp.floor( hi_mod2pi / pi_half )
             cos_xlo = mp.cos( xlow )
             cos_xhi = mp.cos( xhig )
-            min_cos, max_cos = cos_xlo, cos_xhi
-            if cos_xhi < cos_xlo:
-                min_cos, max_cos = cos_xhi, cos_xlo
                 
             if lo_quarter == hi_quarter: # mismo cuadrante --> 8 casos
 
@@ -372,7 +366,11 @@ class Intervalo(object):
                     return whole_range
 
             else:
-                
+                # other abreviations                
+                min_cos, max_cos = cos_xlo, cos_xhi
+                if cos_xhi < cos_xlo:
+                    min_cos, max_cos = cos_xhi, cos_xlo
+
                 if ( lo_quarter == 2 and hi_quarter==3 ) or \
                 ( lo_quarter == 0 and hi_quarter==1 ) : # 2 cases
                     return Intervalo( cos_xlo, cos_xhi )
@@ -393,6 +391,12 @@ class Intervalo(object):
                     raise NotImplementedError( 'SOMETHING WENT WRONG. This should have never\
                         been reached' )
 
+
+    def tan(self):
+        """
+        Se calcula la tangente de un intervalo
+        """
+        return self.sin() / self.cos()
 
 
     # Las relaciones que sirven para checar el orden parcial
@@ -474,31 +478,37 @@ class Intervalo(object):
         """
         if not isinstance(otro, Intervalo):
             otro = Intervalo(otro)
+
         if self._is_empty_intersection(otro):
             print "Intersection is empty: " \
                   "Intervals {} and {} are disjoint".format(self,otro)
+
         else:
             return Intervalo( max(self.lo,otro.lo), min(self.hi,otro.hi) )
 
     def hull(self, otro):
-        """Envoltura/caso de dos intervalos"""
+        """Envoltura/casco de dos intervalos"""
         return Intervalo( min(self.lo,otro.lo), max(self.hi,otro.hi) )
 
     def union(self, otro):
         """Uni\'on de intervalos"""
         if not isinstance(otro, Intervalo):
             otro = Intervalo(otro)
+
         if self._is_empty_intersection(otro):
             print "Union yields no connected interval: " \
                   "Intervals {} and {} are disjoint".format(self,otro)
         else:
             return self.hull(otro)
 
-    # Algunas funciones escalares de intervalos
+    # Algunas funciones escalares de intervalos (ver Tucker)
     def diam(self):
         return self.hi-self.lo
 
-    def centre(self):
+    def rad(self):
+        return diam(self)*0.5
+
+    def mid(self):
         return 0.5*(self.lo+self.hi)
 
     def mag(self):
@@ -512,6 +522,24 @@ class Intervalo(object):
         else:
             return min( abs(self.lo), abs(self.hi) )
 
+    def __abs__(self):  # use as abs(i)
+        """
+        Esto define la función abs() de un intervalo, cuyo resultado
+        es un intervalo (ver Tucker).
+
+        NOTA: La función que regresa la máxima distancia al origen es `self.mag()`
+        (magnitud) y la que regresa la mínima distancia es `self.mig()` ('mignitud').
+        """
+        return Intervalo( self.mig(), self.mag() )
+
+    def abs(self):     # use as i.abs()
+        return abs(self)
+
+    def dist(self, otro):
+        """
+        Esto define la distancia de Hausdorff entre dos intervalos; ver Tucker.
+        """
+        return max( abs(self.lo-otro.lo), abs(self.hi-otro.hi) )
 
     # Representaciones especiales para el IPython Notebook:
     def _repr_html_(self):
@@ -539,19 +567,40 @@ def make_mpf(a):
 
 
 def exp(a):
-    return a.exp()
-
+    try:
+        return a.exp()
+    except:
+        return mp.exp(a)
 
 def log(a):
-    return a.log()
-
+    try:
+        return a.log()
+    except:
+        return mp.log(a)
 
 def sin(a):
-    return a.sin()
-
+    try:
+        return a.sin()
+    except:
+        return mp.sin(a)
 
 def cos(a):
-    return a.cos()
+    try:
+        return a.cos()
+    except:
+        return mp.cos(a)
+
+def tan(a):
+    try:
+        return a.tan()
+    except:
+        return mp.tan(a)
+
+
+def random_interval( infimum=-10.0, supremum=10.0 ):
+    num1a = np.random.uniform( infimum, supremum )
+    num2a = np.random.uniform( infimum, supremum )
+    return Intervalo( num1a, num2a )
 
 
 def split_interval( x, num_divisions=1 ):
@@ -566,7 +615,6 @@ def split_interval( x, num_divisions=1 ):
     splited_intervals = [Intervalo(a, b) for (a,b) in zip(edge_points[:-1], edge_points[1:])]
 
     return splited_intervals
-
 
 def range_interval_f( fun, subdivided_interval ):
     """
@@ -584,6 +632,39 @@ def range_interval_f( fun, subdivided_interval ):
 
     return range_tot
 
+def plot_interval_f( fun, x, pow2=0, num_points=101 ):
+    """
+    This plots the interval extension of a function `fun` over the interval `x`,
+    which is diveded in num=1,2,4,...,2**pow2 uniform subintervals.
+    """
+    num_intervals = [ 2**p for p in range(pow2+1) ]
+    plt.figure()
+    plt.subplot(1, 1, 1)
+
+    for num in num_intervals:
+        fact_alfa = num*1.0/num_intervals[-1]   # for plotting
+
+        # Se divide los subintervaloe en 2**num subintervalos iguales
+        subdivided_intervals = split_interval( x, num )
+        # Se calculan las extensiones de la función sobre el intervalo, usando los subintervalos
+        rango_total = range_interval_f( fun, subdivided_intervals )
+        print "Rango_tot (N={}) = {}".format(num,rango_total)
+        
+        # Hago el dibujo
+        for x1 in subdivided_intervals:
+            low = float(x1.lo)
+            high = float(x1.hi)
+            Ffun = fun(x1)
+            xa1 = np.array([low, low, high, high])
+            ya1 = np.array([float(Ffun.lo), float(Ffun.hi), float(Ffun.hi), float(Ffun.lo) ])
+            plt.fill( xa1, ya1, 'b', alpha=fact_alfa )
+    
+    low = float(x.lo)
+    high = float(x.hi)
+    xx = np.linspace(low,high,num_points)
+    yy = fun(xx)
+    plt.plot( xx, yy, 'red')
+    return 
 
 # Correct (directed) rounding:
 # in each calculation of the lower bound, "floor" rounding must be used;
